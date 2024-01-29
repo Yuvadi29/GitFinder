@@ -3,18 +3,18 @@ import React, { useState } from 'react';
 import { Button, Input, useToast } from '@/app/chakra';
 import axios from 'axios';
 
-const Search = () => {
+const Search = ({ setUserData, setLoading }) => {
     const [query, setQuery] = useState('');
     const toast = useToast();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!query) return;
-
+        setLoading(true);
+        setUserData(null);
         try {
             const res = await axios.get(`https://api.github.com/users/${query}`);
             const data = await res.data;
-            console.log("User Github Data: ", data);
             if (data.message) {
                 return toast({
                     title: "Error",
@@ -22,8 +22,10 @@ const Search = () => {
                     status: "error",
                     duration: 3000,
                     isClosable: true,
-                })
+                });
             }
+            setUserData(data);
+            addUserToLocalStorage(data, query);
         } catch (error) {
             toast({
                 title: "Error",
@@ -31,8 +33,27 @@ const Search = () => {
                 status: "error",
                 duration: 3000,
                 isClosable: true,
-            })
+            });
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const addUserToLocalStorage = (data, username) => {
+        const users = JSON.parse(localStorage.getItem("github-users")) || [];
+        const userExists = users.find((user) => user.id === username);
+
+        if (userExists) {
+            users.splice(users.indexOf(userExists), 1);
+        }
+        users.unshift({
+            id: username,
+            avatar_url: data.avatar_url,
+            name: data.name,
+            url: data.html_url,
+        });
+
+        localStorage.setItem("github-users", JSON.stringify(users));
     };
 
     return (
